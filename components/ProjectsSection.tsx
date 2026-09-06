@@ -4,9 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FlipWords } from "@/components/ui/flip-words";
 
-// =========================================
-// ข้อมูลผลงาน (เพิ่มรูปภาพประกอบ - image)
-// =========================================
 const projectsData = [
   {
     id: "project-1",
@@ -82,9 +79,6 @@ const projectsData = [
   },
 ];
 
-// =========================================
-// Component: รูปภาพ 3D ที่ขยับตามเมาส์
-// =========================================
 function TiltImage({ src, alt }: { src: string; alt: string }) {
   const [transform, setTransform] = useState("");
   const imageRef = useRef<HTMLDivElement>(null);
@@ -119,24 +113,25 @@ function TiltImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-// =========================================
-// Main Component
-// =========================================
 export default function ProjectsSection() {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
-
-  // คำศัพท์ที่จะให้ FlipWords สลับ
   const words = ["Works", "Projects", "Designs", "Ideas"];
 
-  // ล็อคหน้าจอเวลาเปิดโปรเจกต์
+  // 🌟 เพิ่มคำสั่งส่ง Event (Dispatch Event) เพื่อสื่อสารกับ ScrollIndicator
   useEffect(() => {
     const navbar = document.querySelector("header") || document.querySelector("nav");
     if (selectedProject) {
       document.body.style.overflow = "hidden";
       if (navbar) (navbar as HTMLElement).style.opacity = "0";
+      
+      // ส่ง Event ซ่อน UI
+      window.dispatchEvent(new CustomEvent("ui-state", { detail: { isHidden: true } }));
     } else {
       document.body.style.overflow = "";
       if (navbar) (navbar as HTMLElement).style.opacity = "1";
+      
+      // ส่ง Event โชว์ UI
+      window.dispatchEvent(new CustomEvent("ui-state", { detail: { isHidden: false } }));
     }
   }, [selectedProject]);
 
@@ -146,7 +141,6 @@ export default function ProjectsSection() {
     <section className="relative w-full min-h-screen bg-zinc-950 py-32 px-6" id="projects">
       <div className="relative z-10 max-w-7xl mx-auto">
         
-        {/* หัวข้อ */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -159,10 +153,8 @@ export default function ProjectsSection() {
             SHOWCASE // DIRECTORY
           </div>
           
-          {/* ปรับแก้โครงสร้างหัวข้อให้ยืดหยุ่นในบรรทัดเดียว ไม่ให้คำกระโดดตัดบรรทัด */}
           <h2 className="text-4xl sm:text-5xl md:text-7xl font-black text-white mb-6 tracking-tight flex flex-wrap justify-center md:justify-start items-center gap-x-3">
             <span>Selected</span>
-            {/* ล็อคความสูงและขนาดกล่อง FlipWords ให้เสถียรทั้งบนมือถือและจอคอม */}
             <span className="inline-block h-[50px] sm:h-[60px] md:h-[80px] min-w-[180px] sm:min-w-[220px] md:min-w-[280px] text-emerald-400">
               <FlipWords words={words} />
             </span>
@@ -173,7 +165,6 @@ export default function ProjectsSection() {
           </p>
         </motion.div>
 
-        {/* Grid แสดงการ์ดผลงาน */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
           {projectsData.map((project) => (
             <motion.div
@@ -185,7 +176,6 @@ export default function ProjectsSection() {
               onClick={() => setSelectedProject(project.id)}
               className="group cursor-pointer rounded-3xl bg-zinc-900/40 border border-zinc-800/80 overflow-hidden shadow-lg hover:border-zinc-700 transition-colors flex flex-col h-[28rem] relative"
             >
-              {/* รูปภาพในการ์ด */}
               <motion.div
                 layoutId={`project-image-${project.id}`}
                 className="w-full h-[55%] overflow-hidden relative"
@@ -198,7 +188,6 @@ export default function ProjectsSection() {
                 />
               </motion.div>
 
-              {/* ข้อมูลด้านล่าง */}
               <div className="p-8 flex flex-col justify-center flex-grow relative z-20">
                 <span className={`text-[11px] font-mono font-bold ${project.themeColor} mb-2 uppercase tracking-widest inline-block`}>
                   {project.category}
@@ -213,9 +202,6 @@ export default function ProjectsSection() {
         </div>
       </div>
 
-      {/* =========================================
-          Full-Screen Modal
-          ========================================= */}
       <AnimatePresence>
         {selectedProject && activeProject && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
@@ -226,7 +212,6 @@ export default function ProjectsSection() {
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-zinc-950 pointer-events-auto overflow-y-auto overflow-x-hidden"
             >
-              {/* Header */}
               <div className="sticky top-0 w-full px-6 py-6 flex items-center justify-between z-50 bg-gradient-to-b from-zinc-950 via-zinc-950/90 to-transparent">
                 <button
                   onClick={() => setSelectedProject(null)}
@@ -242,7 +227,6 @@ export default function ProjectsSection() {
                 </a>
               </div>
 
-              {/* Content */}
               <div className="max-w-6xl w-full mx-auto px-6 pb-32 pt-4 md:pt-10 flex flex-col lg:flex-row gap-12 lg:gap-16 items-start">
                 
                 <div className="w-full lg:w-5/12 flex flex-col items-center justify-center sticky top-32">

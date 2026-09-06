@@ -136,12 +136,13 @@ const playSound = (type: "tick" | "pop" | "swoosh") => {
 };
 
 export default function ScrollIndicator() {
-  const [isMobile, setIsMobile] = useState(true); // ตั้งค่าเริ่มต้นเป็น true เพื่อป้องกันไม่ให้โผล่แว่บแรกบนมือถือ
+  const [isMobile, setIsMobile] = useState(true);
   const [activeSection, setActiveSection] = useState("home");
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(true);
   const [isAtTop, setIsAtTop] = useState(true);
   const [isHeroExpanded, setIsHeroExpanded] = useState(false);
+  const [isUiHidden, setIsUiHidden] = useState(false); // 🌟 State สำหรับคุมการซ่อน/แสดงเมื่อเปิด Modal ดูรูป
   
   const [activeWidget, setActiveWidget] = useState<{ id: string; label: string; icon: ReactElement } | null>(null);
   const widgetTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -149,12 +150,11 @@ export default function ScrollIndicator() {
   const prevSection = useRef(activeSection);
   const prevIsAtTop = useRef(isAtTop);
 
-  // ตรวจสอบขนาดหน้าจอ
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // 768px คือขนาด md ของ Tailwind
+      setIsMobile(window.innerWidth < 768);
     };
-    handleResize(); // รันครั้งแรกเมื่อ Mount
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -169,9 +169,26 @@ export default function ScrollIndicator() {
     return () => window.removeEventListener("hero-state", handleHeroState);
   }, []);
 
+  // 🌟 useEffect สำหรับดักฟัง Event การเปิดรูปเต็มจอ/โปรเจกต์
+  useEffect(() => {
+    const handleUiState = (e: Event) => {
+      const { isHidden } = (e as CustomEvent).detail;
+      setIsUiHidden(isHidden);
+      
+      if (isHidden) {
+        playSound("swoosh");
+      } else {
+        playSound("pop");
+      }
+    };
+    
+    window.addEventListener("ui-state", handleUiState);
+    return () => window.removeEventListener("ui-state", handleUiState);
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
-      if (isMobile) return; // ไม่ประมวลผลถ้าเป็นมือถือ
+      if (isMobile) return;
 
       setIsAtTop(window.scrollY < 30);
 
@@ -200,10 +217,10 @@ export default function ScrollIndicator() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [isMobile]); // เพิ่ม isMobile เข้าไปใน dependency
+  }, [isMobile]);
 
   useEffect(() => {
-    if (isHeroExpanded || isMobile) return; // ข้ามการเล่นเสียงถ้าเป็นมือถือ
+    if (isHeroExpanded || isMobile) return;
 
     if (prevSection.current !== activeSection) {
       playSound("tick");
@@ -223,7 +240,7 @@ export default function ScrollIndicator() {
   }, [activeSection, isHeroExpanded, isMobile]);
 
   useEffect(() => {
-    if (isMobile) return; // ข้ามการเล่นเสียงถ้าเป็นมือถือ
+    if (isMobile) return;
 
     if (prevIsAtTop.current !== isAtTop) {
       playSound("swoosh");
@@ -238,13 +255,13 @@ export default function ScrollIndicator() {
     }
   };
 
-  // ถ้าหน้าจอเล็ก (มือถือ) หรือ Hero กำลังขยาย ให้ส่งค่า null เพื่อไม่สร้าง UI ออกมาเลย
   if (isHeroExpanded || isMobile) return null;
 
   return (
     <MotionConfig transition={smoothSpring}>
       <AnimatePresence>
-        {activeWidget && (
+        {/* 🌟 เพิ่มเงื่อนไข !isUiHidden */}
+        {activeWidget && !isUiHidden && (
           <motion.div
             key={activeWidget.id}
             initial={{ opacity: 0, x: isAtTop ? -15 : 15, filter: "blur(8px)" }}
@@ -270,7 +287,8 @@ export default function ScrollIndicator() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {isVisible && (
+        {/* 🌟 เพิ่มเงื่อนไข !isUiHidden */}
+        {isVisible && !isUiHidden && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}

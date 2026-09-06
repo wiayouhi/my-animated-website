@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence, type Variants, useScroll, useMotionValueEvent } from "framer-motion";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useAudio } from "./AudioManager";
 
 type SubItem = { name: string; id: string };
@@ -31,6 +31,9 @@ const menuItems: MenuItem[] = [
 ];
 
 const FOOTER_ID = "site-footer";
+const BRAND_NAME = "wiayouhi";
+
+let uiAudioContext: AudioContext | null = null;
 
 const allSectionIds = Array.from(
   new Set(
@@ -40,6 +43,68 @@ const allSectionIds = Array.from(
     ])
   )
 );
+
+function playUiSound(type: "pop" | "click" | "hover" | "compact" | "toggle", isMuted: boolean) {
+  if (isMuted || typeof window === "undefined" || document.visibilityState !== "visible") return;
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    uiAudioContext ??= new AudioCtx();
+    const ctx = uiAudioContext;
+    if (ctx.state === "suspended") void ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+
+    if (type === "pop") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(280, now);
+      osc.frequency.exponentialRampToValueAtTime(850, now + 0.08);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } else if (type === "click") {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.exponentialRampToValueAtTime(150, now + 0.05);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === "hover") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(600, now);
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      osc.start(now);
+      osc.stop(now + 0.03);
+    } else if (type === "compact") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(260, now + 0.1);
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } else if (type === "toggle") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(600, now + 0.07);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    }
+
+    osc.addEventListener("ended", () => {
+      osc.disconnect();
+      gain.disconnect();
+    }, { once: true });
+  } catch {}
+}
 
 function buildWavePath(phase: number, amplitude: number) {
   const width = 36;
@@ -77,32 +142,37 @@ function SoundToggleButton({ compact = false }: { compact?: boolean }) {
   const { isMuted, toggleMute } = useAudio();
   const frames = useMemo(() => (isMuted ? [idleFrame] : activeFrames), [isMuted]);
 
+  const handleToggle = () => {
+    playUiSound("toggle", isMuted);
+    toggleMute();
+  };
+
   return (
     <motion.button
       layout
       type="button"
-      onClick={toggleMute}
+      onClick={handleToggle}
       whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.92 }}
+      whileTap={{ scale: 0.9 }}
       aria-label={isMuted ? "เปิดเสียง" : "ปิดเสียง"}
-      className={`relative flex items-center justify-center gap-2 rounded-xl transition-all duration-300 overflow-hidden ${
+      className={`relative flex items-center justify-center gap-2 rounded-full transition-colors duration-500 overflow-hidden ${
         compact 
-          ? "w-10 h-10 bg-white/10 text-white hover:bg-white/20" 
-          : "px-3 py-1.5 h-10 bg-white/5 hover:bg-white/15 border border-white/10 text-white"
+          ? "w-9 h-9 bg-black/5 text-zinc-800 hover:bg-black/10 border border-black/5" 
+          : "px-3 py-1.5 h-9 bg-black/5 hover:bg-black/10 border border-black/5 text-zinc-800"
       }`}
     >
-      <svg width="28" height="14" viewBox="0 0 36 16" fill="none" className="shrink-0">
+      <svg width="26" height="13" viewBox="0 0 36 16" fill="none" className="shrink-0">
         <motion.path
           d={frames[0]}
           animate={{ d: frames }}
-          stroke={isMuted ? "#a1a1aa" : "#10b981"}
-          strokeWidth={2}
+          stroke={isMuted ? "#a1a1aa" : "#059669"}
+          strokeWidth={2.5}
           strokeLinecap="round"
           fill="none"
           transition={
             isMuted
-              ? { duration: 0.35, ease: "easeOut" }
-              : { duration: 1.6, repeat: Infinity, ease: "linear" }
+              ? { duration: 0.5, ease: "easeOut" }
+              : { duration: 1.8, repeat: Infinity, ease: "linear" }
           }
         />
       </svg>
@@ -112,7 +182,8 @@ function SoundToggleButton({ compact = false }: { compact?: boolean }) {
             initial={{ opacity: 0, width: 0 }}
             animate={{ opacity: 1, width: "auto" }}
             exit={{ opacity: 0, width: 0 }}
-            className="text-xs font-medium tracking-wide text-zinc-300 whitespace-nowrap ml-1"
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="text-xs font-bold tracking-wider text-zinc-600 whitespace-nowrap ml-0.5"
           >
             {isMuted ? "OFF" : "ON"}
           </motion.span>
@@ -122,49 +193,54 @@ function SoundToggleButton({ compact = false }: { compact?: boolean }) {
   );
 }
 
+// อนิเมชันสมูทขึ้น: ลดความแข็ง เพิ่มความลื่นไหลในการยืดหด
+const fluidSpring = {
+  type: "spring" as const,
+  stiffness: 180,
+  damping: 24,
+  mass: 0.7,
+};
+
 const dropdownVariants: Variants = {
   hidden: { opacity: 0, y: 15, scale: 0.95, filter: "blur(10px)" },
   visible: {
-    opacity: 1, y: 0, scale: 1, filter: "blur(0px)",
-    transition: { type: "spring", bounce: 0, duration: 0.4, delayChildren: 0.05, staggerChildren: 0.05 },
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: { type: "spring", stiffness: 220, damping: 24, delayChildren: 0.05, staggerChildren: 0.05 },
   },
-  exit: { opacity: 0, y: 10, scale: 0.95, filter: "blur(10px)", transition: { duration: 0.2 } },
+  exit: { opacity: 0, y: 10, scale: 0.95, filter: "blur(8px)", transition: { duration: 0.2, ease: "easeOut" } },
 };
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, x: -10, filter: "blur(5px)" },
-  visible: { opacity: 1, x: 0, filter: "blur(0px)", transition: { type: "spring", stiffness: 300, damping: 24 } },
+  visible: { opacity: 1, x: 0, filter: "blur(0px)", transition: { type: "spring", stiffness: 250, damping: 20 } },
 };
 
 const mobileNavVariants: Variants = {
-  hidden: { opacity: 0, height: 0 },
+  hidden: { opacity: 0, height: 0, scale: 0.98 },
   visible: {
     opacity: 1,
     height: "auto",
-    transition: { duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98], staggerChildren: 0.05 }
+    scale: 1,
+    transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.05 }
   },
   exit: {
     opacity: 0,
     height: 0,
-    transition: { duration: 0.3, ease: "easeInOut" }
+    scale: 0.98,
+    transition: { duration: 0.35, ease: "easeInOut" }
   }
 };
 
 const mobileItemVariants: Variants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+  hidden: { opacity: 0, x: -15 },
+  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 220, damping: 22 } },
   exit: { opacity: 0, x: -10 }
 };
 
 const SCROLL_OFFSET = 110;
-
-const smoothTransition = { 
-  type: "spring" as const, 
-  stiffness: 250, 
-  damping: 28, 
-  mass: 0.8,
-  bounce: 0 
-};
 
 export default function FloatingMenu() {
   const [activeId, setActiveId] = useState("home");
@@ -174,8 +250,9 @@ export default function FloatingMenu() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
 
+  const { isMuted } = useAudio();
   const { scrollY } = useScroll();
-  const [isCompact, setIsCompact] = useState(false); 
+  const [isCompact, setIsCompact] = useState(false);
 
   const isManualScroll = useRef(false);
   const manualScrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -185,30 +262,37 @@ export default function FloatingMenu() {
     const diff = latest - previous;
     
     if (latest > 120 && diff > 8) {
-      if (!isCompact) setIsCompact(true);
+      if (!isCompact) {
+        setIsCompact(true);
+        playUiSound("compact", isMuted);
+      }
       if (isMobileOpen) setIsMobileOpen(false);
     } else if ((diff < -12 || latest <= 50) && latest > 0) {
-      if (isCompact) setIsCompact(false);
+      if (isCompact) {
+        setIsCompact(false);
+        playUiSound("compact", isMuted);
+      }
     }
   });
 
   useEffect(() => {
-    const handleGalleryToggle = (e: CustomEvent<{ isOpen: boolean }>) => {
-      setIsGalleryOpen(e.detail.isOpen);
-      if (e.detail.isOpen) {
+    const handleGalleryToggle = (event: Event) => {
+      const isOpen = (event as CustomEvent<{ isOpen: boolean }>).detail.isOpen;
+      setIsGalleryOpen(isOpen);
+      if (isOpen) {
         setIsMobileOpen(false);
         setHoveredMenu(null);
         setMobileExpanded(null);
       }
     };
-    window.addEventListener("gallery-fullscreen" as any, handleGalleryToggle);
-    return () => window.removeEventListener("gallery-fullscreen" as any, handleGalleryToggle);
+    window.addEventListener("gallery-fullscreen", handleGalleryToggle);
+    return () => window.removeEventListener("gallery-fullscreen", handleGalleryToggle);
   }, []);
 
-  const scrollToSection = (id: string) => {
+  const scrollToSection = useCallback((id: string) => {
+    playUiSound("click", isMuted);
     setIsMobileOpen(false);
     setHoveredMenu(null);
-    setIsCompact(false);
 
     setTimeout(() => {
       const el = document.getElementById(id);
@@ -226,7 +310,7 @@ export default function FloatingMenu() {
         isManualScroll.current = false;
       }, 1000);
     }, 150);
-  };
+  }, [isMuted]);
 
   useEffect(() => {
     const sections = allSectionIds.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => el !== null);
@@ -262,8 +346,14 @@ export default function FloatingMenu() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (manualScrollTimeout.current) clearTimeout(manualScrollTimeout.current);
+    };
+  }, []);
+
   const isItemActive = (item: MenuItem) => activeId === item.id || (item.subItems?.some((s) => s.id === activeId) ?? false);
-  const shouldHide = isFooterVisible || isGalleryOpen; 
+  const shouldHide = isFooterVisible || isGalleryOpen;
 
   return (
     <>
@@ -271,17 +361,35 @@ export default function FloatingMenu() {
       <div className="fixed top-6 left-0 right-0 z-50 justify-center pointer-events-none hidden md:flex">
         <motion.nav
           layout
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: shouldHide ? -100 : 0, opacity: shouldHide ? 0 : 1 }}
-          transition={smoothTransition}
-          className={`pointer-events-auto flex items-center justify-between rounded-full bg-zinc-900/60 backdrop-blur-2xl border-t border-white/20 border-l border-white/10 shadow-[0_15px_40px_rgba(0,0,0,0.3)] ${
-            isCompact ? "px-4 py-2 gap-4" : "px-6 py-2.5 w-[90%] max-w-5xl gap-4"
+          initial={{ y: -80, opacity: 0, scale: 0.95 }}
+          animate={{
+            y: shouldHide ? -100 : 0,
+            opacity: shouldHide ? 0 : 1,
+            scale: shouldHide ? 0.95 : 1,
+          }}
+          transition={fluidSpring}
+          // เปลี่ยนเป็น Light Glassmorphism
+          className={`pointer-events-auto flex items-center justify-between rounded-full bg-white/40 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08)] ${
+            isCompact 
+              ? "px-3 py-1.5 min-w-[160px] gap-3" 
+              : "px-6 py-2.5 w-[90%] max-w-5xl gap-4"
           }`}
-          style={{ width: isCompact ? "auto" : undefined }}
         >
-          <button onClick={() => scrollToSection("home")} className="flex items-center gap-2 group shrink-0">
-            <motion.div layout transition={smoothTransition} className="w-8 h-8 rounded-full bg-gradient-to-tr from-zinc-300 to-white flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
-              <span className="text-zinc-900 font-black text-sm">W.</span>
+          {/* Logo Brand */}
+          <motion.button
+            layout="position"
+            onClick={() => scrollToSection("home")}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="flex items-center gap-2.5 group shrink-0"
+          >
+            <motion.div
+              layout
+              transition={fluidSpring}
+              className="w-9 h-9 rounded-full bg-gradient-to-tr from-zinc-800 to-zinc-950 flex items-center justify-center shadow-md group-hover:shadow-black/20 transition-all duration-500"
+            >
+              <span className="text-white font-black text-sm tracking-tighter">W.</span>
             </motion.div>
             <AnimatePresence mode="popLayout">
               {!isCompact && (
@@ -289,15 +397,15 @@ export default function FloatingMenu() {
                   initial={{ opacity: 0, width: 0 }}
                   animate={{ opacity: 1, width: "auto" }}
                   exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden ml-1 flex items-center"
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="overflow-hidden ml-0.5 flex items-center"
                 >
-                  <div className="text-white font-bold tracking-widest text-lg whitespace-nowrap">
-                    {"WEBDEV".split("").map((char, index) => (
+                  <div className="text-zinc-900 font-black tracking-widest text-base whitespace-nowrap">
+                    {BRAND_NAME.split("").map((char, index) => (
                       <motion.span
                         key={index}
-                        animate={{ y: [-2, 2, -2] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: index * 0.15 }}
+                        animate={{ y: [-1, 1, -1] }}
+                        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: index * 0.15 }}
                         className="inline-block"
                       >
                         {char}
@@ -307,41 +415,77 @@ export default function FloatingMenu() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </button>
+          </motion.button>
 
+          {/* Navigation Items */}
           <AnimatePresence mode="popLayout">
             {!isCompact && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
                 className="flex items-center gap-1 overflow-visible"
               >
                 {menuItems.map((item) => (
-                  <div key={item.id} className="relative" onMouseEnter={() => setHoveredMenu(item.id)} onMouseLeave={() => setHoveredMenu(null)}>
+                  <div
+                    key={item.id}
+                    className="relative"
+                    onMouseEnter={() => {
+                      setHoveredMenu(item.id);
+                      playUiSound("hover", isMuted);
+                    }}
+                    onMouseLeave={() => setHoveredMenu(null)}
+                  >
                     <button
                       onClick={() => scrollToSection(item.id)}
-                      className={`relative px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 flex items-center gap-1.5 ${
-                        isItemActive(item) ? "text-white" : "text-zinc-400 hover:text-white"
+                      className={`relative px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 flex items-center gap-1.5 ${
+                        isItemActive(item) ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
                       }`}
                     >
                       {isItemActive(item) && (
-                        <motion.div layoutId="desktop-liquid" className="absolute inset-0 bg-white/10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.2)] rounded-full border border-white/10" transition={smoothTransition} style={{ zIndex: -1 }} />
+                        <motion.div
+                          layoutId="desktop-liquid"
+                          className="absolute inset-0 bg-white/70 shadow-[inset_0_1px_3px_rgba(255,255,255,1),0_2px_5px_rgba(0,0,0,0.05)] rounded-full border border-white/80"
+                          transition={fluidSpring}
+                          style={{ zIndex: -1 }}
+                        />
                       )}
                       {item.name}
                       {item.subItems && (
-                        <motion.svg animate={{ rotate: hoveredMenu === item.id ? 180 : 0 }} className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <motion.svg
+                          animate={{ rotate: hoveredMenu === item.id ? 180 : 0 }}
+                          transition={{ type: "spring", stiffness: 250, damping: 20 }}
+                          className="w-3.5 h-3.5 opacity-60"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                         </motion.svg>
                       )}
                     </button>
 
+                    {/* Submenu Dropdown (Light Glass) */}
                     <AnimatePresence>
                       {hoveredMenu === item.id && item.subItems && (
-                        <motion.div variants={dropdownVariants} initial="hidden" animate="visible" exit="exit" className="absolute top-full mt-4 right-0 flex flex-col p-2 rounded-2xl bg-zinc-900/90 backdrop-blur-3xl border border-white/10 shadow-2xl min-w-[180px]">
+                        <motion.div
+                          variants={dropdownVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          className="absolute top-full mt-3 right-0 flex flex-col p-2 rounded-2xl bg-white/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.1)] min-w-[180px] z-50"
+                        >
                           {item.subItems.map((sub) => (
-                            <motion.button key={sub.id} variants={itemVariants} onClick={() => scrollToSection(sub.id)} className={`text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeId === sub.id ? "text-white bg-white/10" : "text-zinc-400 hover:text-white hover:bg-white/5 hover:pl-5"}`}>
+                            <motion.button
+                              key={sub.id}
+                              variants={itemVariants}
+                              whileHover={{ x: 4 }}
+                              onClick={() => scrollToSection(sub.id)}
+                              className={`text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                                activeId === sub.id ? "text-zinc-900 bg-white/80 shadow-sm" : "text-zinc-500 hover:text-zinc-900 hover:bg-white/40"
+                              }`}
+                            >
                               {sub.name}
                             </motion.button>
                           ))}
@@ -354,9 +498,18 @@ export default function FloatingMenu() {
             )}
           </AnimatePresence>
 
-          <motion.div layout transition={smoothTransition} className="flex items-center gap-3 shrink-0">
+          {/* Sound Toggle */}
+          <motion.div layout="position" transition={fluidSpring} className="flex items-center gap-2 shrink-0">
             <AnimatePresence mode="popLayout">
-              {!isCompact && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-[1px] h-6 bg-white/15 mx-1" />}
+              {!isCompact && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-[1px] h-5 bg-black/10 mx-1"
+                />
+              )}
             </AnimatePresence>
             <SoundToggleButton compact={isCompact} />
           </motion.div>
@@ -367,19 +520,46 @@ export default function FloatingMenu() {
       <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none md:hidden">
         <motion.div
           layout
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: shouldHide ? -100 : 0, opacity: shouldHide ? 0 : 1 }}
-          transition={smoothTransition}
-          style={{ originY: 0, originX: 0.5 }}
-          className={`pointer-events-auto flex flex-col overflow-hidden bg-zinc-900/85 backdrop-blur-3xl border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${
-            isCompact && !isMobileOpen ? "rounded-full w-[max-content]" : "rounded-[1.5rem] w-full max-w-sm"
+          initial={{ y: -80, opacity: 0, scale: 0.95 }}
+          animate={{
+            y: shouldHide ? -100 : 0,
+            opacity: shouldHide ? 0 : 1,
+            scale: shouldHide ? 0.95 : 1,
+          }}
+          transition={fluidSpring}
+          style={{ transformOrigin: "top center" }}
+          // Light Glassmorphism for Mobile
+          className={`pointer-events-auto flex flex-col overflow-hidden bg-white/50 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/60 shadow-[0_15px_40px_rgba(0,0,0,0.12)] ${
+            isCompact && !isMobileOpen
+              ? "rounded-full w-auto min-w-[130px] px-2 py-1.5"
+              : "rounded-[1.75rem] w-full max-w-sm p-1.5"
           }`}
         >
           {/* Header Bar */}
-          <motion.div layout transition={smoothTransition} className={`flex justify-between items-center ${isCompact && !isMobileOpen ? "px-2 py-2 gap-3" : "px-3 py-2 gap-4"}`}>
-            <button onClick={() => { if (isCompact) setIsCompact(false); else scrollToSection("home"); }} className="flex items-center gap-2.5 shrink-0">
-              <motion.div layout transition={smoothTransition} className="w-10 h-10 rounded-full bg-gradient-to-tr from-zinc-300 to-white flex items-center justify-center shadow-md">
-                <span className="text-zinc-900 font-black text-sm">W.</span>
+          <motion.div
+            layout="position"
+            transition={fluidSpring}
+            className={`flex items-center justify-between ${
+              isCompact && !isMobileOpen ? "gap-2" : "gap-3 px-2 py-1"
+            }`}
+          >
+            <button
+              onClick={() => {
+                if (isCompact) {
+                  setIsCompact(false);
+                  playUiSound("compact", isMuted);
+                } else {
+                  scrollToSection("home");
+                }
+              }}
+              className="flex items-center gap-2.5 shrink-0 active:scale-95 transition-transform"
+            >
+              <motion.div
+                layout
+                transition={fluidSpring}
+                className="w-9 h-9 rounded-full bg-gradient-to-tr from-zinc-800 to-zinc-950 flex items-center justify-center shadow-md"
+              >
+                <span className="text-white font-black text-xs">W.</span>
               </motion.div>
               <AnimatePresence mode="popLayout">
                 {(!isCompact || isMobileOpen) && (
@@ -387,15 +567,15 @@ export default function FloatingMenu() {
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: "auto" }}
                     exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                     className="overflow-hidden origin-left flex items-center"
                   >
-                    <div className="text-white font-bold tracking-widest text-sm whitespace-nowrap">
-                      {"WEBDEV".split("").map((char, index) => (
+                    <div className="text-zinc-900 font-black tracking-widest text-xs whitespace-nowrap">
+                      {BRAND_NAME.split("").map((char, index) => (
                         <motion.span
                           key={index}
-                          animate={{ y: [-1.5, 1.5, -1.5] }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: index * 0.15 }}
+                          animate={{ y: [-1, 1, -1] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: index * 0.15 }}
                           className="inline-block"
                         >
                           {char}
@@ -407,33 +587,48 @@ export default function FloatingMenu() {
               </AnimatePresence>
             </button>
 
-            <motion.div layout transition={smoothTransition} className="flex items-center gap-2 shrink-0">
+            <motion.div layout="position" transition={fluidSpring} className="flex items-center gap-2 shrink-0">
               <AnimatePresence mode="popLayout">
                 {(!isCompact || isMobileOpen) && (
-                  <motion.div initial={{ opacity: 0, scale: 0, width: 0 }} animate={{ opacity: 1, scale: 1, width: "auto" }} exit={{ opacity: 0, scale: 0, width: 0 }} transition={{ duration: 0.3 }}>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <SoundToggleButton compact />
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Hamburger Button */}
+              {/* Hamburger Toggle Button (Light Theme) */}
               <button
                 onClick={() => {
+                  playUiSound("pop", isMuted);
                   if (isCompact) setIsCompact(false);
                   setIsMobileOpen(!isMobileOpen);
                 }}
-                className="relative bg-white/10 hover:bg-white/20 w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all border border-white/5"
+                className="relative bg-black/5 hover:bg-black/10 w-9 h-9 rounded-full flex items-center justify-center active:scale-85 transition-all border border-black/5 shrink-0"
               >
-                <div className="flex flex-col items-center justify-center gap-1.5 w-5 h-5">
-                  <motion.span animate={{ rotate: isMobileOpen ? 45 : 0, y: isMobileOpen ? 8 : 0 }} className="w-full h-[2px] bg-white rounded-full block transform-gpu origin-center transition-all duration-300" />
-                  <motion.span animate={{ opacity: isMobileOpen ? 0 : 1, x: isMobileOpen ? 10 : 0 }} className="w-full h-[2px] bg-white rounded-full block transform-gpu transition-all duration-300" />
-                  <motion.span animate={{ rotate: isMobileOpen ? -45 : 0, y: isMobileOpen ? -8 : 0 }} className="w-full h-[2px] bg-white rounded-full block transform-gpu origin-center transition-all duration-300" />
+                <div className="flex flex-col items-center justify-center gap-1 w-4 h-4">
+                  <motion.span
+                    animate={{ rotate: isMobileOpen ? 45 : 0, y: isMobileOpen ? 5 : 0 }}
+                    className="w-full h-[2px] bg-zinc-800 rounded-full block transform-gpu origin-center transition-all duration-400 ease-out"
+                  />
+                  <motion.span
+                    animate={{ opacity: isMobileOpen ? 0 : 1, x: isMobileOpen ? 8 : 0 }}
+                    className="w-full h-[2px] bg-zinc-800 rounded-full block transform-gpu transition-all duration-400 ease-out"
+                  />
+                  <motion.span
+                    animate={{ rotate: isMobileOpen ? -45 : 0, y: isMobileOpen ? -5 : 0 }}
+                    className="w-full h-[2px] bg-zinc-800 rounded-full block transform-gpu origin-center transition-all duration-400 ease-out"
+                  />
                 </div>
               </button>
             </motion.div>
           </motion.div>
 
-          {/* Mobile Menu Items List */}
+          {/* Mobile Navigation List */}
           <AnimatePresence>
             {isMobileOpen && (
               <motion.div
@@ -441,44 +636,58 @@ export default function FloatingMenu() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="flex flex-col gap-1.5 pt-4 pb-3 px-2 border-t border-white/10"
+                className="flex flex-col gap-1.5 pt-3 pb-2 px-1 border-t border-black/5 mt-2"
               >
                 {menuItems.map((item) => (
                   <motion.div key={item.id} variants={mobileItemVariants} className="flex flex-col">
                     <button
                       onClick={() => {
+                        playUiSound("click", isMuted);
                         if (item.subItems) {
                           setMobileExpanded(mobileExpanded === item.id ? null : item.id);
                         } else {
                           scrollToSection(item.id);
                         }
                       }}
-                      className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl font-medium text-[15px] transition-colors ${
-                        isItemActive(item) ? "bg-white/10 text-white border border-white/5" : "text-zinc-400 hover:text-white hover:bg-white/5"
+                      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
+                        isItemActive(item)
+                          ? "bg-white/80 text-zinc-900 border border-white/60 shadow-sm"
+                          : "text-zinc-600 hover:text-zinc-900 hover:bg-white/40"
                       }`}
                     >
                       <span>{item.name}</span>
                       {item.subItems && (
-                        <motion.svg animate={{ rotate: mobileExpanded === item.id ? 180 : 0 }} className="w-4 h-4 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <motion.svg
+                          animate={{ rotate: mobileExpanded === item.id ? 180 : 0 }}
+                          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                          className="w-4 h-4 shrink-0 opacity-60"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                         </motion.svg>
                       )}
                     </button>
 
+                    {/* Submenu Mobile */}
                     <AnimatePresence>
                       {item.subItems && mobileExpanded === item.id && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="flex flex-col gap-1 mt-1.5 ml-4 pl-4 border-l border-white/10 overflow-hidden"
+                          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                          className="flex flex-col gap-1 mt-1 ml-3 pl-3 border-l border-black/10 overflow-hidden"
                         >
                           {item.subItems.map((sub) => (
                             <button
                               key={sub.id}
                               onClick={() => scrollToSection(sub.id)}
-                              className={`text-left px-4 py-3 rounded-lg text-sm transition-all ${
-                                activeId === sub.id ? "text-white font-semibold bg-white/5" : "text-zinc-400 hover:text-white hover:bg-white/5 hover:translate-x-1"
+                              className={`text-left px-3 py-2.5 rounded-lg text-xs font-bold transition-all duration-300 ${
+                                activeId === sub.id
+                                  ? "text-zinc-900 bg-white/60 shadow-sm"
+                                  : "text-zinc-500 hover:text-zinc-900 hover:bg-white/40"
                               }`}
                             >
                               {sub.name}

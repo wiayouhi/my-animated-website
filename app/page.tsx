@@ -16,6 +16,7 @@ import PageLoader from "@/components/PageLoader";
 import { AudioProvider } from "@/components/AudioManager";
 import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 import ScrollIndicator from "@/components/ScrollIndicator";
+import TextLoop from "@/components/TextLoop";
 
 function ScrollTextLines() {
   const marqueeItems = [
@@ -111,7 +112,18 @@ export default function Home() {
           <GallerySection />
         </section>
 
-        <ScrollTextLines />
+        <div className="relative w-full overflow-hidden bg-zinc-950 py-16 sm:py-24">
+          <TextLoop
+            text="GITHUB REPOS"
+            separator="✦"
+            shape="wave"
+            speed={90}
+            color="#ffffff"
+            ribbonColor="#10b981"
+            ribbonWidth={82}
+            className="text-center"
+          />
+        </div>
 
         {/* 3. Github Projects Section */}
         <section id="github" data-sound="github">
