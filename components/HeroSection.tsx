@@ -159,7 +159,7 @@ export default function HeroSection() {
               transition={{ duration: 1.4, ease: EASE }}
               className="absolute inset-0 -z-10 h-full w-full object-cover"
               src="/hero-bg.mp4"
-              poster="/hero-bg-poster.jpg"
+              poster="/image.png"
             />
 
             <motion.div
