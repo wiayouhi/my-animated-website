@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, AnimatePresence, useInView, useScroll, useTransform, useSpring } from "framer-motion";
 import { useAudio } from "./AudioManager";
 
 const IMAGES = [
@@ -45,13 +45,34 @@ export default function HeroSection() {
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { amount: 0.2 }); 
 
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+
+  // 💡 1. ลดความหน่วงของสปริงลง เพื่อให้ตามนิ้ว/เมาส์ติดขึ้น ไม่ฝืด
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 400, // เพิ่มค่าให้แข็งขึ้น ตอบสนองไวขึ้น
+    damping: 40,
+    restDelta: 0.001,
+  });
+
+  // 💡 2. ปรับ Range ให้เริ่มขยับและเฟดออกทันทีที่เริ่มเลื่อน (0 ถึง 1) 
+  // ไม่ให้มีช่วงหน่วงที่ 0-0.7 อีกต่อไป
+  const heroY = useTransform(smoothProgress, [0, 1], [0, -150]);
+  const heroOpacity = useTransform(smoothProgress, [0, 0.6, 1], [1, 0.3, 0]);
+  const cueY = useTransform(smoothProgress, [0, 1], [0, 50]);
+  const cueX = useTransform(smoothProgress, [0, 1], [0, 80]);
+  const cueLeftX = useTransform(cueX, (value) => -value);
+  const cueOpacity = useTransform(smoothProgress, [0, 0.25, 0.6], [1, 0, 0]);
+
   useEffect(() => {
-    if (expanded) return;
+    if (expanded || !isInView) return;
     const interval = setInterval(() => {
       setImgIndex((prev) => (prev + 1) % IMAGES.length);
     }, 3500);
     return () => clearInterval(interval);
-  }, [expanded]);
+  }, [expanded, isInView]);
 
   const handleExpand = () => {
     playUISound("click");
@@ -83,7 +104,8 @@ export default function HeroSection() {
         {!expanded ? (
           <motion.div
             key="collapsed"
-            className="absolute inset-0 z-10 flex items-end justify-center"
+            style={{ y: heroY, opacity: heroOpacity, translateZ: 0 }}
+            className="absolute inset-0 z-10 flex transform-gpu items-end justify-center will-change-transform"
           >
             <div className="pointer-events-none absolute left-0 top-1/2 z-0 flex -translate-y-1/2 whitespace-nowrap opacity-[0.04]">
               <motion.div
@@ -108,7 +130,7 @@ export default function HeroSection() {
                 transition: { duration: 0.6, ease: EASE },
               }}
               transition={{ type: "spring", stiffness: 50, damping: 20, delay: 0.1 }}
-              className="group relative z-10 flex h-[65vh] w-[90vw] max-w-[500px] cursor-pointer items-end justify-center md:h-[95vh] md:w-[750px]"
+              className="group relative z-10 flex h-[65vh] w-[90vw] max-w-[500px] cursor-pointer items-end justify-center md:h-[95vh] md:w-[min(950px,92vw)] md:max-w-none"
               aria-label="Open full profile"
             >
               <div className="relative flex h-full w-full items-end justify-center overflow-hidden">
@@ -117,12 +139,11 @@ export default function HeroSection() {
                     key={imgIndex}
                     src={IMAGES[imgIndex]}
                     alt={`My Profile ${imgIndex + 1}`}
-                    // 💡 เปลี่ยนรูปแบบการเปลี่ยนรูปเป็น Blur + Slide พรีเมียมๆ
                     initial={{ opacity: 0, y: 40, scale: 1.05, filter: "blur(12px)" }}
                     animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
                     exit={{ opacity: 0, y: -20, scale: 0.95, filter: "blur(12px)" }}
                     transition={{ duration: 1.2, ease: EASE }}
-                    className="absolute max-h-full max-w-full origin-bottom transform object-contain object-bottom drop-shadow-[0_30px_60px_rgba(0,0,0,0.2)] md:scale-125"
+                    className="absolute max-h-full max-w-full origin-bottom transform object-contain object-bottom drop-shadow-[0_30px_60px_rgba(0,0,0,0.2)] md:scale-100 lg:scale-105"
                   />
                 </AnimatePresence>
               </div>
@@ -146,7 +167,8 @@ export default function HeroSection() {
         ) : (
           <motion.div
             key="expanded"
-            className="absolute inset-0 z-20 flex flex-col items-center justify-end"
+            style={{ y: heroY, opacity: heroOpacity, translateZ: 0 }}
+            className="absolute inset-0 z-20 flex transform-gpu flex-col items-center justify-end will-change-transform"
           >
             <motion.video
               autoPlay
@@ -186,7 +208,6 @@ export default function HeroSection() {
                 transition={{ duration: 1, ease: EASE }}
                 className="relative py-2"
               >
-                {/* 💡 คอมโพเนนต์ตัวอักษรใหม่ */}
                 <StaggeredText text="HI! I AM Wia" />
               </motion.div>
 
@@ -226,6 +247,60 @@ export default function HeroSection() {
             </motion.div>
 
             <StatusBar onNavClick={handleCollapse} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {!expanded && isInView && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.86, y: 14 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.86, y: 14 }}
+            style={{ y: cueY, opacity: cueOpacity }}
+            transition={{ duration: 0.8, delay: 0.9, ease: EASE }}
+            className="pointer-events-none absolute inset-y-0 left-4 right-4 z-30 flex items-center justify-between text-zinc-500 md:left-8 md:right-8"
+          >
+            {["left", "right"].map((side) => (
+              <motion.div
+                key={side}
+                className="relative flex h-44 w-10 flex-col items-center justify-center gap-3"
+                style={{ x: side === "left" ? cueLeftX : cueX }}
+                initial={{ opacity: 0, x: side === "left" ? -24 : 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: side === "left" ? -24 : 24 }}
+                transition={{ duration: 0.8, delay: side === "right" ? 0.12 : 0, ease: EASE }}
+              >
+                <motion.span
+                  aria-hidden="true"
+                  className="text-[9px] font-semibold uppercase tracking-[0.28em] text-current/70"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.55, delay: side === "right" ? 0.24 : 0.12, ease: EASE }}
+                  style={{
+                    writingMode: "vertical-rl",
+                    transform: side === "left" ? "rotate(180deg)" : undefined,
+                  }}
+                >
+                  Scroll to explore
+                </motion.span>
+                <motion.span
+                  aria-hidden="true"
+                  className="relative h-32 w-0.5 overflow-hidden bg-current/20"
+                  initial={{ opacity: 0, scaleY: 0.7 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  exit={{ opacity: 0, scaleY: 0.7 }}
+                  transition={{ duration: 0.7, delay: side === "right" ? 0.18 : 0.06, ease: EASE }}
+                />
+                <motion.span
+                  aria-hidden="true"
+                  className="absolute top-12 h-10 w-1 bg-current shadow-[0_0_14px_currentColor]"
+                  animate={{ y: [0, 88], opacity: [0, 1, 0] }}
+                  transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 0.25, ease: "linear", delay: side === "right" ? 0.35 : 0 }}
+                />
+              </motion.div>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
@@ -302,7 +377,7 @@ function StaggeredText({ text }: { text: string }) {
               transition={{
                 duration: 0.8,
                 ease: EASE,
-                delay: 0.4 + (i * 0.1) + (j * 0.04) // ไล่ระดับความหน่วงแต่ละตัวอักษร
+                delay: 0.4 + (i * 0.1) + (j * 0.04)
               }}
               className="inline-block bg-[linear-gradient(180deg,#fff,#a1a1aa)] bg-clip-text text-transparent drop-shadow-sm"
             >

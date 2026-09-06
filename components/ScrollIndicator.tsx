@@ -187,10 +187,14 @@ export default function ScrollIndicator() {
   }, []);
 
   useEffect(() => {
-    const handleScroll = () => {
+    let frame = 0;
+
+    const updateFromScroll = () => {
+      frame = 0;
       if (isMobile) return;
 
-      setIsAtTop(window.scrollY < 30);
+      const nextIsAtTop = window.scrollY < 30;
+      setIsAtTop((previous) => previous === nextIsAtTop ? previous : nextIsAtTop);
 
       let current = "home";
       for (const section of sections) {
@@ -202,21 +206,30 @@ export default function ScrollIndicator() {
           }
         }
       }
-      setActiveSection(current);
+      setActiveSection((previous) => previous === current ? previous : current);
 
       const footer = document.getElementById("footer");
       if (footer) {
         const footerRect = footer.getBoundingClientRect();
-        setIsVisible(footerRect.top > window.innerHeight - 100);
+        const nextIsVisible = footerRect.top > window.innerHeight - 100;
+        setIsVisible((previous) => previous === nextIsVisible ? previous : nextIsVisible);
       } else {
         const isBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 50;
-        setIsVisible(!isBottom);
+        const nextIsVisible = !isBottom;
+        setIsVisible((previous) => previous === nextIsVisible ? previous : nextIsVisible);
       }
+    };
+
+    const handleScroll = () => {
+      if (!frame) frame = requestAnimationFrame(updateFromScroll);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [isMobile]);
 
   useEffect(() => {

@@ -31,8 +31,6 @@ const menuItems: MenuItem[] = [
 ];
 
 const FOOTER_ID = "site-footer";
-const BRAND_NAME = "wiayouhi";
-
 let uiAudioContext: AudioContext | null = null;
 
 const allSectionIds = Array.from(
@@ -138,7 +136,7 @@ const activeFrames = Array.from({ length: PHASE_STEPS + 1 }, (_, i) =>
 );
 const idleFrame = buildWavePath(0, 0.8);
 
-function SoundToggleButton({ compact = false }: { compact?: boolean }) {
+function SoundToggleButton({ compact = false, isAtTop = false }: { compact?: boolean; isAtTop?: boolean }) {
   const { isMuted, toggleMute } = useAudio();
   const frames = useMemo(() => (isMuted ? [idleFrame] : activeFrames), [isMuted]);
 
@@ -157,15 +155,15 @@ function SoundToggleButton({ compact = false }: { compact?: boolean }) {
       aria-label={isMuted ? "เปิดเสียง" : "ปิดเสียง"}
       className={`relative flex items-center justify-center gap-2 rounded-full transition-colors duration-500 overflow-hidden ${
         compact 
-          ? "w-9 h-9 bg-black/5 text-zinc-800 hover:bg-black/10 border border-black/5" 
-          : "px-3 py-1.5 h-9 bg-black/5 hover:bg-black/10 border border-black/5 text-zinc-800"
+          ? `${isAtTop ? "w-9 h-9 text-zinc-900 hover:bg-black/5" : "w-9 h-9 bg-white/10 text-white hover:bg-white/20 border border-white/15"}`
+          : `${isAtTop ? "px-3 py-1.5 h-9 text-zinc-900 hover:bg-black/5" : "px-3 py-1.5 h-9 bg-white/10 hover:bg-white/20 border border-white/15 text-white"}`
       }`}
     >
       <svg width="26" height="13" viewBox="0 0 36 16" fill="none" className="shrink-0">
         <motion.path
           d={frames[0]}
           animate={{ d: frames }}
-          stroke={isMuted ? "#a1a1aa" : "#059669"}
+          stroke={isMuted ? (isAtTop ? "#71717a" : "#a1a1aa") : (isAtTop ? "#18181b" : "#ffffff")}
           strokeWidth={2.5}
           strokeLinecap="round"
           fill="none"
@@ -183,7 +181,7 @@ function SoundToggleButton({ compact = false }: { compact?: boolean }) {
             animate={{ opacity: 1, width: "auto" }}
             exit={{ opacity: 0, width: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="text-xs font-bold tracking-wider text-zinc-600 whitespace-nowrap ml-0.5"
+            className={`text-xs font-bold tracking-wider whitespace-nowrap ml-0.5 ${isAtTop ? "text-zinc-700" : "text-zinc-300"}`}
           >
             {isMuted ? "OFF" : "ON"}
           </motion.span>
@@ -219,25 +217,23 @@ const itemVariants: Variants = {
 };
 
 const mobileNavVariants: Variants = {
-  hidden: { opacity: 0, height: 0, scale: 0.98 },
+  hidden: { opacity: 0, height: 0 },
   visible: {
     opacity: 1,
     height: "auto",
-    scale: 1,
-    transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.05 }
+    transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.04 }
   },
   exit: {
     opacity: 0,
     height: 0,
-    scale: 0.98,
     transition: { duration: 0.35, ease: "easeInOut" }
   }
 };
 
 const mobileItemVariants: Variants = {
-  hidden: { opacity: 0, x: -15 },
-  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 220, damping: 22 } },
-  exit: { opacity: 0, x: -10 }
+  hidden: { opacity: 0, y: 5 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.22, ease: "easeOut" } },
+  exit: { opacity: 0, y: 5 }
 };
 
 const SCROLL_OFFSET = 110;
@@ -249,17 +245,24 @@ export default function FloatingMenu() {
   const [isFooterVisible, setIsFooterVisible] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
+  const [isHeroExpanded, setIsHeroExpanded] = useState(false);
 
   const { isMuted } = useAudio();
   const { scrollY } = useScroll();
   const [isCompact, setIsCompact] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
+  const [isScrollHidden, setIsScrollHidden] = useState(false);
 
   const isManualScroll = useRef(false);
   const manualScrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLightSurface = isAtTop && !isHeroExpanded;
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious() || 0;
     const diff = latest - previous;
+    setIsAtTop(latest <= 24);
+    if (latest <= 24 || diff < -12) setIsScrollHidden(false);
+    if (latest > 120 && diff > 8) setIsScrollHidden(true);
     
     if (latest > 120 && diff > 8) {
       if (!isCompact) {
@@ -274,6 +277,14 @@ export default function FloatingMenu() {
       }
     }
   });
+
+  useEffect(() => {
+    const handleHeroState = (event: Event) => {
+      setIsHeroExpanded((event as CustomEvent<{ expanded: boolean }>).detail.expanded);
+    };
+    window.addEventListener("hero-state", handleHeroState);
+    return () => window.removeEventListener("hero-state", handleHeroState);
+  }, []);
 
   useEffect(() => {
     const handleGalleryToggle = (event: Event) => {
@@ -363,70 +374,30 @@ export default function FloatingMenu() {
           layout
           initial={{ y: -80, opacity: 0, scale: 0.95 }}
           animate={{
-            y: shouldHide ? -100 : 0,
+            y: shouldHide || isScrollHidden ? -100 : 0,
             opacity: shouldHide ? 0 : 1,
             scale: shouldHide ? 0.95 : 1,
           }}
           transition={fluidSpring}
           // เปลี่ยนเป็น Light Glassmorphism
-          className={`pointer-events-auto flex items-center justify-between rounded-full bg-white/40 backdrop-blur-2xl backdrop-saturate-[180%] border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08)] ${
+          className={`pointer-events-auto flex items-center justify-between rounded-full transition-[background-color,border-color,box-shadow,backdrop-filter] duration-500 ${
+            isLightSurface
+              ? "bg-transparent border-transparent shadow-none backdrop-blur-none"
+              : "bg-zinc-950/80 backdrop-blur-2xl backdrop-saturate-[160%] border-white/15 shadow-[0_10px_35px_rgba(0,0,0,0.28)]"
+          } ${
             isCompact 
-              ? "px-3 py-1.5 min-w-[160px] gap-3" 
+              ? "px-3 py-1.5 gap-1" 
               : "px-6 py-2.5 w-[90%] max-w-5xl gap-4"
           }`}
         >
-          {/* Logo Brand */}
-          <motion.button
-            layout="position"
-            onClick={() => scrollToSection("home")}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="flex items-center gap-2.5 group shrink-0"
-          >
-            <motion.div
-              layout
-              transition={fluidSpring}
-              className="w-9 h-9 rounded-full bg-gradient-to-tr from-zinc-800 to-zinc-950 flex items-center justify-center shadow-md group-hover:shadow-black/20 transition-all duration-500"
-            >
-              <span className="text-white font-black text-sm tracking-tighter">W.</span>
-            </motion.div>
-            <AnimatePresence mode="popLayout">
-              {!isCompact && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  className="overflow-hidden ml-0.5 flex items-center"
-                >
-                  <div className="text-zinc-900 font-black tracking-widest text-base whitespace-nowrap">
-                    {BRAND_NAME.split("").map((char, index) => (
-                      <motion.span
-                        key={index}
-                        animate={{ y: [-1, 1, -1] }}
-                        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: index * 0.15 }}
-                        className="inline-block"
-                      >
-                        {char}
-                      </motion.span>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
-
           {/* Navigation Items */}
           <AnimatePresence mode="popLayout">
-            {!isCompact && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="flex items-center gap-1 overflow-visible"
-              >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className={`flex items-center overflow-visible ${isCompact ? "gap-0" : "gap-1"}`}
+            >
                 {menuItems.map((item) => (
                   <div
                     key={item.id}
@@ -439,14 +410,16 @@ export default function FloatingMenu() {
                   >
                     <button
                       onClick={() => scrollToSection(item.id)}
-                      className={`relative px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 flex items-center gap-1.5 ${
-                        isItemActive(item) ? "text-zinc-900" : "text-zinc-500 hover:text-zinc-800"
+                        className={`relative rounded-full font-semibold transition-colors duration-300 flex items-center ${isCompact ? "px-2 py-1 text-xs gap-1" : "px-4 py-2 text-sm gap-1.5"} ${
+                          isItemActive(item)
+                            ? (isLightSurface ? "text-zinc-950" : "text-white")
+                            : (isLightSurface ? "text-zinc-700 hover:text-zinc-950" : "text-zinc-400 hover:text-white")
                       }`}
                     >
                       {isItemActive(item) && (
                         <motion.div
                           layoutId="desktop-liquid"
-                          className="absolute inset-0 bg-white/70 shadow-[inset_0_1px_3px_rgba(255,255,255,1),0_2px_5px_rgba(0,0,0,0.05)] rounded-full border border-white/80"
+                          className={`absolute inset-0 rounded-full ${isLightSurface ? "bg-black/5 border border-black/10" : "bg-white/12 border border-white/15 shadow-[inset_0_1px_3px_rgba(255,255,255,0.25),0_2px_8px_rgba(0,0,0,0.2)]"}`}
                           transition={fluidSpring}
                           style={{ zIndex: -1 }}
                         />
@@ -474,7 +447,11 @@ export default function FloatingMenu() {
                           initial="hidden"
                           animate="visible"
                           exit="exit"
-                          className="absolute top-full mt-3 right-0 flex flex-col p-2 rounded-2xl bg-white/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.1)] min-w-[180px] z-50"
+                          className={`absolute top-full mt-3 right-0 flex flex-col p-2 rounded-2xl backdrop-blur-3xl backdrop-saturate-[180%] min-w-[180px] z-50 transition-colors duration-500 ${
+                            isLightSurface
+                              ? "bg-white/90 border border-black/10 shadow-[0_15px_35px_rgba(0,0,0,0.12)]"
+                              : "bg-zinc-950/95 border border-white/15 shadow-[0_15px_35px_rgba(0,0,0,0.35)]"
+                          }`}
                         >
                           {item.subItems.map((sub) => (
                             <motion.button
@@ -483,7 +460,9 @@ export default function FloatingMenu() {
                               whileHover={{ x: 4 }}
                               onClick={() => scrollToSection(sub.id)}
                               className={`text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                                activeId === sub.id ? "text-zinc-900 bg-white/80 shadow-sm" : "text-zinc-500 hover:text-zinc-900 hover:bg-white/40"
+                                isLightSurface
+                                  ? (activeId === sub.id ? "text-zinc-950 bg-black/8 shadow-sm" : "text-zinc-600 hover:text-zinc-950 hover:bg-black/5")
+                                  : (activeId === sub.id ? "text-white bg-white/12 shadow-sm" : "text-zinc-400 hover:text-white hover:bg-white/8")
                               }`}
                             >
                               {sub.name}
@@ -494,8 +473,7 @@ export default function FloatingMenu() {
                     </AnimatePresence>
                   </div>
                 ))}
-              </motion.div>
-            )}
+            </motion.div>
           </AnimatePresence>
 
           {/* Sound Toggle */}
@@ -507,11 +485,11 @@ export default function FloatingMenu() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="w-[1px] h-5 bg-black/10 mx-1"
+                  className="w-[1px] h-5 bg-white/15 mx-1"
                 />
               )}
             </AnimatePresence>
-            <SoundToggleButton compact={isCompact} />
+            <SoundToggleButton compact={isCompact} isAtTop={isLightSurface} />
           </motion.div>
         </motion.nav>
       </div>
@@ -519,17 +497,20 @@ export default function FloatingMenu() {
       {/* Mobile Menu */}
       <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none md:hidden">
         <motion.div
-          layout
           initial={{ y: -80, opacity: 0, scale: 0.95 }}
           animate={{
-            y: shouldHide ? -100 : 0,
+            y: shouldHide || isScrollHidden ? -100 : 0,
             opacity: shouldHide ? 0 : 1,
             scale: shouldHide ? 0.95 : 1,
           }}
           transition={fluidSpring}
           style={{ transformOrigin: "top center" }}
           // Light Glassmorphism for Mobile
-          className={`pointer-events-auto flex flex-col overflow-hidden bg-white/50 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/60 shadow-[0_15px_40px_rgba(0,0,0,0.12)] ${
+          className={`pointer-events-auto flex w-full max-w-sm flex-col overflow-hidden transition-[background-color,border-color,box-shadow,backdrop-filter] duration-500 ${
+            isLightSurface
+              ? "bg-transparent border-transparent shadow-none backdrop-blur-none"
+              : "bg-zinc-950/90 backdrop-blur-3xl backdrop-saturate-[160%] border-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.35)]"
+          } ${
             isCompact && !isMobileOpen
               ? "rounded-full w-auto min-w-[130px] px-2 py-1.5"
               : "rounded-[1.75rem] w-full max-w-sm p-1.5"
@@ -543,50 +524,6 @@ export default function FloatingMenu() {
               isCompact && !isMobileOpen ? "gap-2" : "gap-3 px-2 py-1"
             }`}
           >
-            <button
-              onClick={() => {
-                if (isCompact) {
-                  setIsCompact(false);
-                  playUiSound("compact", isMuted);
-                } else {
-                  scrollToSection("home");
-                }
-              }}
-              className="flex items-center gap-2.5 shrink-0 active:scale-95 transition-transform"
-            >
-              <motion.div
-                layout
-                transition={fluidSpring}
-                className="w-9 h-9 rounded-full bg-gradient-to-tr from-zinc-800 to-zinc-950 flex items-center justify-center shadow-md"
-              >
-                <span className="text-white font-black text-xs">W.</span>
-              </motion.div>
-              <AnimatePresence mode="popLayout">
-                {(!isCompact || isMobileOpen) && (
-                  <motion.div
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                    className="overflow-hidden origin-left flex items-center"
-                  >
-                    <div className="text-zinc-900 font-black tracking-widest text-xs whitespace-nowrap">
-                      {BRAND_NAME.split("").map((char, index) => (
-                        <motion.span
-                          key={index}
-                          animate={{ y: [-1, 1, -1] }}
-                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: index * 0.15 }}
-                          className="inline-block"
-                        >
-                          {char}
-                        </motion.span>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </button>
-
             <motion.div layout="position" transition={fluidSpring} className="flex items-center gap-2 shrink-0">
               <AnimatePresence mode="popLayout">
                 {(!isCompact || isMobileOpen) && (
@@ -596,7 +533,7 @@ export default function FloatingMenu() {
                     exit={{ opacity: 0, scale: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <SoundToggleButton compact />
+                    <SoundToggleButton compact isAtTop={isLightSurface} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -608,20 +545,20 @@ export default function FloatingMenu() {
                   if (isCompact) setIsCompact(false);
                   setIsMobileOpen(!isMobileOpen);
                 }}
-                className="relative bg-black/5 hover:bg-black/10 w-9 h-9 rounded-full flex items-center justify-center active:scale-85 transition-all border border-black/5 shrink-0"
+                className={`relative w-9 h-9 rounded-full flex items-center justify-center active:scale-85 transition-all shrink-0 ${isLightSurface ? "text-zinc-900 hover:bg-black/5" : "bg-white/10 hover:bg-white/20 border border-white/15"}`}
               >
                 <div className="flex flex-col items-center justify-center gap-1 w-4 h-4">
                   <motion.span
                     animate={{ rotate: isMobileOpen ? 45 : 0, y: isMobileOpen ? 5 : 0 }}
-                    className="w-full h-[2px] bg-zinc-800 rounded-full block transform-gpu origin-center transition-all duration-400 ease-out"
+                    className={`w-full h-[2px] rounded-full block transform-gpu origin-center transition-all duration-400 ease-out ${isLightSurface ? "bg-zinc-900" : "bg-white"}`}
                   />
                   <motion.span
                     animate={{ opacity: isMobileOpen ? 0 : 1, x: isMobileOpen ? 8 : 0 }}
-                    className="w-full h-[2px] bg-zinc-800 rounded-full block transform-gpu transition-all duration-400 ease-out"
+                    className={`w-full h-[2px] rounded-full block transform-gpu transition-all duration-400 ease-out ${isLightSurface ? "bg-zinc-900" : "bg-white"}`}
                   />
                   <motion.span
                     animate={{ rotate: isMobileOpen ? -45 : 0, y: isMobileOpen ? -5 : 0 }}
-                    className="w-full h-[2px] bg-zinc-800 rounded-full block transform-gpu origin-center transition-all duration-400 ease-out"
+                    className={`w-full h-[2px] rounded-full block transform-gpu origin-center transition-all duration-400 ease-out ${isLightSurface ? "bg-zinc-900" : "bg-white"}`}
                   />
                 </div>
               </button>
@@ -636,7 +573,7 @@ export default function FloatingMenu() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="flex flex-col gap-1.5 pt-3 pb-2 px-1 border-t border-black/5 mt-2"
+                className={`flex flex-col gap-1.5 pt-3 pb-2 px-1 mt-2 border-t ${isLightSurface ? "border-black/10" : "border-white/10"}`}
               >
                 {menuItems.map((item) => (
                   <motion.div key={item.id} variants={mobileItemVariants} className="flex flex-col">
@@ -650,9 +587,13 @@ export default function FloatingMenu() {
                         }
                       }}
                       className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
-                        isItemActive(item)
-                          ? "bg-white/80 text-zinc-900 border border-white/60 shadow-sm"
-                          : "text-zinc-600 hover:text-zinc-900 hover:bg-white/40"
+                        isLightSurface
+                          ? (isItemActive(item)
+                            ? "bg-black/8 text-zinc-950 border border-black/10 shadow-sm"
+                            : "text-zinc-700 hover:text-zinc-950 hover:bg-black/5")
+                          : (isItemActive(item)
+                            ? "bg-white/12 text-white border border-white/15 shadow-sm"
+                            : "text-zinc-400 hover:text-white hover:bg-white/8")
                       }`}
                     >
                       <span>{item.name}</span>
@@ -678,16 +619,20 @@ export default function FloatingMenu() {
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                          className="flex flex-col gap-1 mt-1 ml-3 pl-3 border-l border-black/10 overflow-hidden"
+                          className={`flex flex-col gap-1 mt-1 ml-3 pl-3 border-l overflow-hidden ${isLightSurface ? "border-black/10" : "border-white/10"}`}
                         >
                           {item.subItems.map((sub) => (
                             <button
                               key={sub.id}
                               onClick={() => scrollToSection(sub.id)}
                               className={`text-left px-3 py-2.5 rounded-lg text-xs font-bold transition-all duration-300 ${
-                                activeId === sub.id
-                                  ? "text-zinc-900 bg-white/60 shadow-sm"
-                                  : "text-zinc-500 hover:text-zinc-900 hover:bg-white/40"
+                                isLightSurface
+                                  ? (activeId === sub.id
+                                    ? "text-zinc-950 bg-black/8 shadow-sm"
+                                    : "text-zinc-600 hover:text-zinc-950 hover:bg-black/5")
+                                  : (activeId === sub.id
+                                    ? "text-white bg-white/10 shadow-sm"
+                                    : "text-zinc-400 hover:text-white hover:bg-white/8")
                               }`}
                             >
                               {sub.name}
