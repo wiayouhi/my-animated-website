@@ -1,8 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence, useInView, useScroll, useTransform, useSpring } from "framer-motion";
+import { 
+  motion, 
+  AnimatePresence, 
+  useInView, 
+  useScroll, 
+  useTransform, 
+  useSpring,
+  useMotionValue 
+} from "framer-motion";
 import { useAudio } from "./AudioManager";
+import Particles from "@/components/ui/Particles";
 
 const IMAGES = [
   "/me.jpg", 
@@ -19,7 +28,6 @@ const NAV_ITEMS = [
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-// 💡 เสียงสไตล์นุ่มนวล (Soft Pop & Clean Tick)
 const SOUNDS = {
   click: "https://www.soundjay.com/buttons/sounds/button-09a.mp3", 
   hover: "https://www.soundjay.com/buttons/sounds/button-07.mp3"  
@@ -50,21 +58,44 @@ export default function HeroSection() {
     offset: ["start start", "end start"],
   });
 
-  // 💡 1. ลดความหน่วงของสปริงลง เพื่อให้ตามนิ้ว/เมาส์ติดขึ้น ไม่ฝืด
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 400, // เพิ่มค่าให้แข็งขึ้น ตอบสนองไวขึ้น
+    stiffness: 400, 
     damping: 40,
     restDelta: 0.001,
   });
 
-  // 💡 2. ปรับ Range ให้เริ่มขยับและเฟดออกทันทีที่เริ่มเลื่อน (0 ถึง 1) 
-  // ไม่ให้มีช่วงหน่วงที่ 0-0.7 อีกต่อไป
   const heroY = useTransform(smoothProgress, [0, 1], [0, -150]);
   const heroOpacity = useTransform(smoothProgress, [0, 0.6, 1], [1, 0.3, 0]);
   const cueY = useTransform(smoothProgress, [0, 1], [0, 50]);
   const cueX = useTransform(smoothProgress, [0, 1], [0, 80]);
   const cueLeftX = useTransform(cueX, (value) => -value);
   const cueOpacity = useTransform(smoothProgress, [0, 0.25, 0.6], [1, 0, 0]);
+
+  // --- 3D Parallax Mouse Tracking Setup ---
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  
+  const springConfig = { damping: 25, stiffness: 150, mass: 0.5 };
+  const smoothMouseX = useSpring(mouseX, springConfig);
+  const smoothMouseY = useSpring(mouseY, springConfig);
+  
+  const rotateX = useTransform(smoothMouseY, [-0.5, 0.5], [10, -10]);
+  const rotateY = useTransform(smoothMouseX, [-0.5, 0.5], [-10, 10]);
+  const translateX = useTransform(smoothMouseX, [-0.5, 0.5], [-15, 15]);
+  const translateY = useTransform(smoothMouseY, [-0.5, 0.5], [-15, 15]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPct = (e.clientX - rect.left) / rect.width - 0.5;
+    const yPct = (e.clientY - rect.top) / rect.height - 0.5;
+    mouseX.set(xPct);
+    mouseY.set(yPct);
+  };
+
+  const handleMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+  };
 
   useEffect(() => {
     if (expanded || !isInView) return;
@@ -107,10 +138,24 @@ export default function HeroSection() {
             style={{ y: heroY, opacity: heroOpacity, translateZ: 0 }}
             className="absolute inset-0 z-10 flex transform-gpu items-end justify-center will-change-transform"
           >
-            <div className="pointer-events-none absolute left-0 top-1/2 z-0 flex -translate-y-1/2 whitespace-nowrap opacity-[0.04]">
+          {/* Particle background layer */}
+          <div className="pointer-events-none absolute inset-0 z-0">
+            <Particles
+              particleCount={55}
+              speed={0.3}
+              particleColors={["#a1a1aa", "#71717a", "#d4d4d8"]}
+              connectDistance={110}
+              mouseRepel={false}
+            />
+          </div>
+
+          {/* Marquee text watermark */}
+          <div className="pointer-events-none absolute left-0 top-1/2 z-0 flex -translate-y-1/2 whitespace-nowrap opacity-[0.05]">
               <motion.div
-                layoutId="marquee-text"
-                transition={{ duration: 1, ease: EASE }}
+                initial={{ opacity: 0, scale: 0.9, filter: "blur(15px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, scale: 1.05, filter: "blur(15px)" }}
+                transition={{ duration: 1.2, ease: EASE }}
                 className="flex"
               >
                 <MarqueeLoop />
@@ -120,6 +165,11 @@ export default function HeroSection() {
             <motion.button
               type="button"
               onClick={handleExpand}
+              onMouseMove={handleMouseMove} 
+              onMouseLeave={(e) => {
+                handleMouseLeave();
+                playUISound("hover"); 
+              }}
               onMouseEnter={() => playUISound("hover")}
               initial={{ opacity: 0, y: 150, filter: "blur(20px)" }}
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -130,23 +180,27 @@ export default function HeroSection() {
                 transition: { duration: 0.6, ease: EASE },
               }}
               transition={{ type: "spring", stiffness: 50, damping: 20, delay: 0.1 }}
+              style={{ perspective: 1000 }}
               className="group relative z-10 flex h-[65vh] w-[90vw] max-w-[500px] cursor-pointer items-end justify-center md:h-[95vh] md:w-[min(950px,92vw)] md:max-w-none"
               aria-label="Open full profile"
             >
-              <div className="relative flex h-full w-full items-end justify-center overflow-hidden">
-                <AnimatePresence mode="popLayout">
+              <motion.div 
+                style={{ rotateX, rotateY, x: translateX, y: translateY }}
+                className="relative flex h-full w-full items-end justify-center overflow-visible"
+              >
+                <AnimatePresence mode="wait">
                   <motion.img
                     key={imgIndex}
                     src={IMAGES[imgIndex]}
                     alt={`My Profile ${imgIndex + 1}`}
-                    initial={{ opacity: 0, y: 40, scale: 1.05, filter: "blur(12px)" }}
-                    animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-                    exit={{ opacity: 0, y: -20, scale: 0.95, filter: "blur(12px)" }}
+                    initial={{ opacity: 0, y: 80, scale: 0.85, rotate: -3, filter: "blur(20px)" }}
+                    animate={{ opacity: 1, y: 0, scale: 1, rotate: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, y: -60, scale: 1.1, rotate: 3, filter: "blur(20px)", transition: { duration: 0.6 } }}
                     transition={{ duration: 1.2, ease: EASE }}
-                    className="absolute max-h-full max-w-full origin-bottom transform object-contain object-bottom drop-shadow-[0_30px_60px_rgba(0,0,0,0.2)] md:scale-100 lg:scale-105"
+                    className="absolute max-h-full max-w-full origin-bottom transform object-contain object-bottom drop-shadow-[0_40px_80px_rgba(0,0,0,0.25)] md:scale-100 lg:scale-105"
                   />
                 </AnimatePresence>
-              </div>
+              </motion.div>
 
               <div className="absolute bottom-6 flex gap-2 z-20 md:bottom-10">
                 {IMAGES.map((_, i) => (
@@ -204,7 +258,9 @@ export default function HeroSection() {
               </motion.span>
 
               <motion.div
-                layoutId="marquee-text"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 1, ease: EASE }}
                 className="relative py-2"
               >
@@ -360,7 +416,6 @@ export default function HeroSection() {
   );
 }
 
-// 💡 เอฟเฟกต์ตัวหนังสือแบบแยกตัวอักษร เคลื่อนไหวสมูทและสะอาดตา
 function StaggeredText({ text }: { text: string }) {
   const words = text.split(" ");
   
@@ -390,21 +445,30 @@ function StaggeredText({ text }: { text: string }) {
   );
 }
 
+// 💡 แก้ไข MarqueeLoop ให้ใช้ CSS Animation แทน Framer Motion
+// ทำงานทันที 100% ตั้งแต่ตอนโหลดเว็บ ไม่มีอาการหน่วง
 function MarqueeLoop() {
   const text = "CREATIVE DEVELOPER • UI/UX DESIGNER • NEXT.JS EXPERT • ";
   return (
-    <motion.div
-      animate={{ x: ["0%", "-50%"] }}
-      transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
-      className="flex"
-    >
-      <h2 className="mr-8 text-[100px] font-black uppercase tracking-tighter text-zinc-900 md:text-[220px]">
-        {text}
-      </h2>
-      <h2 className="text-[100px] font-black uppercase tracking-tighter text-zinc-900 md:text-[220px]">
-        {text}
-      </h2>
-    </motion.div>
+    <>
+      <style>{`
+        @keyframes custom-marquee {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-custom-marquee {
+          animation: custom-marquee 30s linear infinite;
+        }
+      `}</style>
+      <div className="animate-custom-marquee flex">
+        <h2 className="mr-8 text-[100px] font-black uppercase tracking-tighter text-zinc-900 md:text-[220px]">
+          {text}
+        </h2>
+        <h2 className="text-[100px] font-black uppercase tracking-tighter text-zinc-900 md:text-[220px]">
+          {text}
+        </h2>
+      </div>
+    </>
   );
 }
 

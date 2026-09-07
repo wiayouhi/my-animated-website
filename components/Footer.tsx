@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useTransition } from "./TransitionContext"; // นำเข้าจาก Context กลาง
+import Aurora from "@/components/ui/Aurora";
 
 // รายชื่อไฟล์ภาพในโฟลเดอร์ public/images/ ของคุณ
 const LOCAL_IMAGES = [
@@ -399,6 +400,14 @@ export default function Footer() {
         />
         <CloudBlob className="top-[-6rem] left-[-4rem] w-[26rem] h-[26rem] bg-blue-600/20" duration={14} />
         <CloudBlob className="bottom-[-8rem] right-[-6rem] w-[24rem] h-[24rem] bg-blue-500/10" duration={18} delay={2} />
+
+        {/* Aurora ambient background */}
+        <Aurora
+          colorStops={["#1d4ed8", "#4f46e5", "#0891b2"]}
+          blur={100}
+          opacity={0.18}
+          speed={12}
+        />
 
         <div className="max-w-7xl mx-auto px-6 w-full relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">

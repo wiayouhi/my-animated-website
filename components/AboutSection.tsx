@@ -7,6 +7,9 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { Timeline } from "@/components/ui/timeline";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import Image from "next/image"; // Make sure to import this if you use Next.js Image
+import SplitText from "@/components/ui/SplitText";
+import ShinyText from "@/components/ui/ShinyText";
+import ScrollReveal from "@/components/ui/ScrollReveal";
 
 // =========================================
 // Hack Text Component
@@ -202,18 +205,27 @@ export default function AboutSection() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-xs font-mono text-indigo-400">
             <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-            SYSTEM_LOG // CHRONICLE
+            <ShinyText text="SYSTEM_LOG // CHRONICLE" speed={4} />
           </div>
 
           <div className="min-h-[60px] md:min-h-[80px] w-full flex items-center justify-center overflow-visible">
-            <h2 className="text-[28px] sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 tracking-tight leading-none whitespace-nowrap">
-              <HackText text="Education Journey" />
-            </h2>
+            <SplitText
+              text="Education Journey"
+              as="h2"
+              className="text-[28px] sm:text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 tracking-tight leading-none"
+              charClassName=""
+              delay={25}
+              duration={0.55}
+              animateBy="chars"
+              fromY={35}
+            />
           </div>
 
-          <p className="text-zinc-400 text-sm sm:text-base md:text-lg max-w-2xl leading-relaxed mt-2 px-4">
-            เส้นทางการศึกษาตั้งแต่ประถมศึกษาจนถึงมัธยมศึกษาตอนปลาย เลื่อนเพื่อสำรวจประวัติการเรียน
-          </p>
+          <ScrollReveal delay={0.1} direction="up" distance={20}>
+            <p className="text-zinc-400 text-sm sm:text-base md:text-lg max-w-2xl leading-relaxed mt-2 px-4">
+              เส้นทางการศึกษาตั้งแต่ประถมศึกษาจนถึงมัธยมศึกษาตอนปลาย เลื่อนเพื่อสำรวจประวัติการเรียน
+            </p>
+          </ScrollReveal>
 
           <div className="w-full max-w-3xl mt-8 p-4 sm:p-6 rounded-3xl bg-zinc-900/60 border border-zinc-800/80 backdrop-blur-xl shadow-2xl grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-0 items-center divide-y sm:divide-y-0 sm:divide-x divide-zinc-800/80">
             <div className="text-center p-2">

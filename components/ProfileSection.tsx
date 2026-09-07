@@ -1,6 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
+import BlurText from "@/components/ui/BlurText";
+import ShinyText from "@/components/ui/ShinyText";
+import ScrollReveal from "@/components/ui/ScrollReveal";
 
 // ข้อมูลส่วนตัวพื้นฐาน (แก้ตรงนี้ให้เป็นข้อมูลของคุณได้เลย)
 const personalInfo = [
@@ -29,29 +32,25 @@ export default function ProfileSection() {
             transition={{ duration: 0.5 }}
             className="text-zinc-400 font-bold tracking-widest uppercase mb-4 text-sm"
           >
-            Introduction
+            <ShinyText text="Introduction" speed={4} />
           </motion.span>
           
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl md:text-5xl font-extrabold text-zinc-900 mb-6 leading-tight"
-          >
-            Hello, <br />
-            I'm <span className="text-zinc-500">Wia.</span>
-          </motion.h2>
+          <div className="mb-6">
+            <BlurText
+              text="Hello, I'm Wia."
+              as="h2"
+              className="text-4xl md:text-5xl font-extrabold text-zinc-900 leading-tight"
+              delay={70}
+              animateBy="words"
+              direction="bottom"
+            />
+          </div>
 
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg text-zinc-600 font-light leading-relaxed mb-6"
-          >
-            "ความพยายามในวันนี้ คือความสำเร็จในวันหน้า"
-          </motion.p>
+          <ScrollReveal delay={0.15} direction="up" distance={24}>
+            <p className="text-lg text-zinc-600 font-light leading-relaxed mb-6">
+              "ความพยายามในวันนี้ คือความสำเร็จในวันหน้า"
+            </p>
+          </ScrollReveal>
           
           <motion.div
              initial={{ opacity: 0, y: 30 }}
