@@ -44,8 +44,8 @@ export default function ScrollReveal({
     return () => observer.disconnect();
   }, [threshold, once]);
 
-  const initial: Record<string, unknown> = { opacity: 0 };
-  const animate: Record<string, unknown> = { opacity: inView ? 1 : 0 };
+  const initial: any = { opacity: 0 };
+  const animate: any = { opacity: inView ? 1 : 0 };
 
   if (direction === "up") {
     initial.y = distance;
