@@ -448,9 +448,7 @@ export default function Footer() {
                 transition={{ duration: 0.6, delay: 0.4 }}
                 className="flex flex-wrap gap-4"
               >
-                <button className="bg-zinc-100 text-zinc-900 px-8 py-3 rounded hover:bg-white transition-colors flex items-center gap-2 font-medium">
-                  Get In Touch <span>→</span>
-                </button>
+        
                 <button
                   onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                   className="bg-transparent text-zinc-100 border-2 border-zinc-700 px-8 py-3 rounded hover:border-zinc-500 transition-colors flex items-center gap-2 font-medium"
@@ -483,7 +481,7 @@ export default function Footer() {
                 {[
                   { value: "24/7", label: "Open To Work" },
                   { value: "<24h", label: "Reply Time" },
-                  { value: "© " + new Date().getFullYear(), label: "DEV404" },
+                  { value: "© " + new Date().getFullYear(), label: "WiA" },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -539,19 +537,19 @@ export default function Footer() {
                   </h4>
                   <div className="grid grid-cols-3 gap-3">
                     <a
-                      href="mailto:hello@example.com"
+                      href="https://www.tiktok.com/@thanawat.wia"
                       className="flex items-center justify-center gap-2 py-2.5 px-2 border border-zinc-800 rounded text-sm font-medium hover:bg-zinc-800/60 hover:border-zinc-700 transition-all"
                     >
-                      Email
+                      Tiktok
                     </a>
                     <a
-                      href="#"
+                      href="https://www.instagram.com/thanawat.wia"
                       className="flex items-center justify-center gap-2 py-2.5 px-2 border border-zinc-800 rounded text-sm font-medium hover:bg-zinc-800/60 hover:border-zinc-700 transition-all"
                     >
-                      LinkedIn
+                      Instagram
                     </a>
                     <a
-                      href="#"
+                      href="https://github.com/wiayouhi"
                       className="flex items-center justify-center gap-2 py-2.5 px-2 border border-zinc-800 rounded text-sm font-medium hover:bg-zinc-800/60 hover:border-zinc-700 transition-all"
                     >
                       GitHub

@@ -11,7 +11,8 @@ import {
   useMotionValue 
 } from "framer-motion";
 import { useAudio } from "./AudioManager";
-import Particles from "@/components/ui/Particles";
+// ❌ เอาการ import Particles ออกได้เลยถ้าไม่ได้ใช้ที่อื่นแล้ว
+// import Particles from "@/components/ui/Particles"; 
 
 const IMAGES = [
   "/me.jpg", 
@@ -138,16 +139,7 @@ export default function HeroSection() {
             style={{ y: heroY, opacity: heroOpacity, translateZ: 0 }}
             className="absolute inset-0 z-10 flex transform-gpu items-end justify-center will-change-transform"
           >
-          {/* Particle background layer */}
-          <div className="pointer-events-none absolute inset-0 z-0">
-            <Particles
-              particleCount={55}
-              speed={0.3}
-              particleColors={["#a1a1aa", "#71717a", "#d4d4d8"]}
-              connectDistance={110}
-              mouseRepel={false}
-            />
-          </div>
+          {/* ❌ ส่วน Particles ถูกลบออกไปจากตรงนี้ */}
 
           {/* Marquee text watermark */}
           <div className="pointer-events-none absolute left-0 top-1/2 z-0 flex -translate-y-1/2 whitespace-nowrap opacity-[0.05]">
@@ -445,8 +437,6 @@ function StaggeredText({ text }: { text: string }) {
   );
 }
 
-// 💡 แก้ไข MarqueeLoop ให้ใช้ CSS Animation แทน Framer Motion
-// ทำงานทันที 100% ตั้งแต่ตอนโหลดเว็บ ไม่มีอาการหน่วง
 function MarqueeLoop() {
   const text = "CREATIVE DEVELOPER • UI/UX DESIGNER • NEXT.JS EXPERT • ";
   return (
@@ -495,6 +485,6 @@ function StatusBar({ onNavClick }: { onNavClick: () => void }) {
         <a href="#projects" onClick={onNavClick} onMouseEnter={() => playUISound("hover")} className="transition-colors hover:text-white">projects</a>
         <a href="#contact" onClick={onNavClick} onMouseEnter={() => playUISound("hover")} className="transition-colors hover:text-white">contact</a>
       </span>
-    </motion.div>
+    </motion.div>  
   );
 }
